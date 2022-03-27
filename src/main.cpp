@@ -213,35 +213,35 @@ void loop() {
 
 
 //  For DC Motor 2
-    //   Firebase.RTDB.readStream(&motor2Rotation);
-    //   motor2Rotation.httpConnected();
+      Firebase.RTDB.readStream(&motor2Rotation);
+      motor2Rotation.httpConnected();
 
-    //   Firebase.RTDB.readStream(&motor2Speed);
-    //   motor2Speed.httpConnected();
+      Firebase.RTDB.readStream(&motor2Speed);
+      motor2Speed.httpConnected();
 
-    //   Firebase.RTDB.readStream(&motor2State);
-    //   motor2State.httpConnected();
+      Firebase.RTDB.readStream(&motor2State);
+      motor2State.httpConnected();
 
 
-    // if (motor2State.intData() == 1)
-    // {
-    //   if (motor2Rotation.intData() == 1)
-    //   {
-    //     digitalWrite(m2CwDirection, LOW);
-    //     digitalWrite(m2CcwDirection, HIGH);
-    //     ledcWrite(channel2, motor2Speed.intData() * 255 / 100);
-    //   }
-    //   else if (motor2Rotation.intData() == 0)
-    //   {
-    //     digitalWrite(m2CcwDirection, LOW);
-    //     digitalWrite(m2CwDirection, HIGH);
-    //     ledcWrite(channel2, motor2Speed.intData() * 255 / 100);
-    //   }
-    // }
-    // else if (motor2State.intData() == 0)
-    // {
-    //   digitalWrite(m2CcwDirection, LOW);
-    //   digitalWrite(m2CwDirection, LOW);
-    // }
+    if (motor2State.intData() == 1)
+    {
+      if (motor2Rotation.intData() == 1)
+      {
+        digitalWrite(m2CwDirection, LOW);
+        digitalWrite(m2CcwDirection, HIGH);
+        ledcWrite(channel2, motor2Speed.intData() * 255 / 100);
+      }
+      else if (motor2Rotation.intData() == 0)
+      {
+        digitalWrite(m2CcwDirection, LOW);
+        digitalWrite(m2CwDirection, HIGH);
+        ledcWrite(channel2, motor2Speed.intData() * 255 / 100);
+      }
+    }
+    else if (motor2State.intData() == 0)
+    {
+      digitalWrite(m2CcwDirection, LOW);
+      digitalWrite(m2CwDirection, LOW);
+    }
   }
 }

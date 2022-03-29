@@ -41,8 +41,8 @@ FirebaseData dcMotor1;
 #define m1CwDirection 27
 #define m1CcwDirection 14
 
-String parentPath = "/DC Motor/Motor 1";
-String childPath[3] = {"/Rotation", "/Speed", "/State"};
+String parentPath = "/DC Motor";
+String childPath[7] = {"/Rotation1","/Rotation2", "/Speed1","/Speed2", "/State1", "/State2", "/State3"};
 
 // For On Board LED
 const int led = 2;
@@ -56,9 +56,9 @@ int count = 0;
 
 volatile bool dataChanged = false;
 
-volatile bool rotation, state;
+volatile bool rotation1, rotation2, state1, state2, state3;
 
-int speed;
+int speed1, speed2;
 
 
 void streamCallback(MultiPathStream dcMotor1)
@@ -69,20 +69,19 @@ void streamCallback(MultiPathStream dcMotor1)
   {
     if (dcMotor1.get(childPath[i]))
     {
-      if (i == 0)
-      {
-        dcMotor1.value.toInt() == 1 ? rotation = true : rotation = false;
-      }
+      if (i == 0){dcMotor1.value.toInt() == 1 ? rotation1 = true : rotation1 = false;}
 
-      if (i == 1)
-      {
-        speed = dcMotor1.value.toInt();
-      }
+      if (i == 1){dcMotor1.value.toInt() == 1 ? rotation2 = true : rotation2 = false;}
 
-      if (i == 2)
-      {
-        dcMotor1.value.toInt() == 1 ? state = true : state = false;
-      }
+      if (i == 2){speed1 = dcMotor1.value.toInt();}
+
+      if (i == 3){speed2 = dcMotor1.value.toInt();}
+
+      if (i == 4){dcMotor1.value.toInt() == 1 ? state1 = true : state1 = false;}
+
+      if (i == 5){dcMotor1.value.toInt() == 1 ? state2 = true : state2 = false;}
+
+      if (i == 6){dcMotor1.value.toInt() == 1 ? state3 = true : state3 = false;}
     }
   }
 
@@ -204,24 +203,24 @@ void loop() {
   if (dataChanged)
   {
     dataChanged = false;
-    Serial.printf("Rotation: %d \nSpeed: %d \nState: %d \n\n", rotation, speed, state);
+    Serial.printf("Rotation: %d \nSpeed: %d \nState: %d \n\n", rotation1, speed1, state1);
     
-    if (state)
+    if (state1)
     {
-      if (rotation)
+      if (rotation1)
       {
-        ledcWrite(channel1, speed * 255 / 100);
+        ledcWrite(channel1, speed1 * 255 / 100);
         digitalWrite(m1CcwDirection, LOW);
         digitalWrite(m1CwDirection, HIGH);
       }
-      else if (!rotation)
+      else if (!rotation1)
       {
-        ledcWrite(channel1, speed * 255 / 100);
+        ledcWrite(channel1, speed1 * 255 / 100);
         digitalWrite(m1CwDirection, LOW);
         digitalWrite(m1CcwDirection, HIGH);
       }
     }
-    else if(!state)
+    else if(!state1)
     {
       digitalWrite(m1CwDirection, LOW);
       digitalWrite(m1CcwDirection, LOW);

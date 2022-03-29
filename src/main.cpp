@@ -36,10 +36,10 @@ FirebaseData servoMotor;
 FirebaseData dcMotor1;
 
 //Define pinout for 1st Dc motor. Pin Numbers For Arduino Framework
-const int motor1PWM = 32;
-const int channel1 = 4;
-const int m1CwDirection = 23;
-const int m1CcwDirection = 22;
+#define motor1PWM 32
+#define channel1 4
+#define m1CwDirection 27
+#define m1CcwDirection 14
 
 String parentPath = "/DC Motor/Motor 1";
 String childPath[3] = {"/Rotation", "/Speed", "/State"};
@@ -56,19 +56,10 @@ int count = 0;
 
 volatile bool dataChanged = false;
 
-int rotation, speed, state;
+volatile bool rotation, state;
 
-void rotation1(int value){
-  rotation = value;
-}
+int speed;
 
-void speed1(int value){
-  speed = value;
-}
-
-void state1(int value){
-  state = value;
-}
 
 void streamCallback(MultiPathStream dcMotor1)
 {
@@ -80,17 +71,17 @@ void streamCallback(MultiPathStream dcMotor1)
     {
       if (i == 0)
       {
-        rotation1(dcMotor1.value.toInt());
+        dcMotor1.value.toInt() == 1 ? rotation = true : rotation = false;
       }
 
       if (i == 1)
       {
-        speed1(dcMotor1.value.toInt());
+        speed = dcMotor1.value.toInt();
       }
 
       if (i == 2)
       {
-        state1(dcMotor1.value.toInt());
+        dcMotor1.value.toInt() == 1 ? state = true : state = false;
       }
     }
   }
@@ -214,8 +205,26 @@ void loop() {
   {
     dataChanged = false;
     Serial.printf("Rotation: %d \nSpeed: %d \nState: %d \n\n", rotation, speed, state);
-
-    state == 1 ? digitalWrite(led, HIGH) : digitalWrite(led, LOW);
+    
+    if (state)
+    {
+      if (rotation)
+      {
+        ledcWrite(channel1, speed * 255 / 100);
+        digitalWrite(m1CcwDirection, LOW);
+        digitalWrite(m1CwDirection, HIGH);
+      }
+      else if (!rotation)
+      {
+        ledcWrite(channel1, speed * 255 / 100);
+        digitalWrite(m1CwDirection, LOW);
+        digitalWrite(m1CcwDirection, HIGH);
+      }
+    }
+    else if(!state)
+    {
+      digitalWrite(m1CwDirection, LOW);
+      digitalWrite(m1CcwDirection, LOW);
+    }
   }
-
 }

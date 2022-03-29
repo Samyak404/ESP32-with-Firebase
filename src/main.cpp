@@ -26,8 +26,8 @@ const int resolution = 8;
 Servo servoMotor1;
 Servo servoMotor2;
 
-const int servoPinNumber1 = 13;
-const int servoPinNumber2 = 12;
+#define servoPinNumber1 13
+#define servoPinNumber2 12
 
 // Define Firebase Data For Servo Motor
 FirebaseData servoMotor;
@@ -41,47 +41,59 @@ FirebaseData dcMotor1;
 #define m1CwDirection 27
 #define m1CcwDirection 14
 
-String parentPath = "/DC Motor/Motor 1";
-String childPath[3] = {"/Rotation", "/Speed", "/State"};
+String parentPathForM1 = "/DC Motor/Motor 1";
+String childPathForM1[3] = {"/Rotation", "/Speed", "/State"};
 
-// For On Board LED
-const int led = 2;
+
+// Define Firebase Data For 1st Dc motor
+FirebaseData dcMotor2;
+
+//Define pinout for 2nd Dc motor. Pin Numbers For Arduino Framework
+#define motor2PWM 33
+#define channel2 5
+#define m2CwDirection 2
+#define m2CcwDirection 15
+
+String parentPathForM2 = "/DC Motor/Motor 2";
+String childPathForM2[3] = {"/Rotation", "/Speed", "/State"};
 
 FirebaseAuth auth;
 FirebaseConfig config;
 
 bool signupOK = false;
 
-int count = 0;
+// DC Motor 1 Attributes
+volatile bool m1DataChanged = false;
+volatile bool m1Rotation, m1State;
+int m1Speed;
 
-volatile bool dataChanged = false;
+// DC Motor 2 Attributes
+volatile bool m2DataChanged = false;
+volatile bool m2Rotation, m2State;
+int m2Speed;
 
-volatile bool rotation, state;
-
-int speed;
-
-
-void streamCallback(MultiPathStream dcMotor1)
+// CallBack function for 1st dc motor
+void streamCallbackForM1(MultiPathStream dcMotor1)
 {
-  size_t numChild = sizeof(childPath) / sizeof(childPath[0]);
+  size_t numChild = sizeof(childPathForM1) / sizeof(childPathForM1[0]);
 
   for (size_t i = 0; i < numChild; i++)
   {
-    if (dcMotor1.get(childPath[i]))
+    if (dcMotor1.get(childPathForM1[i]))
     {
       if (i == 0)
       {
-        dcMotor1.value.toInt() == 1 ? rotation = true : rotation = false;
+        dcMotor1.value.toInt() == 1 ? m1Rotation = true : m1Rotation = false;
       }
 
       if (i == 1)
       {
-        speed = dcMotor1.value.toInt();
+        m1Speed = dcMotor1.value.toInt();
       }
 
       if (i == 2)
       {
-        dcMotor1.value.toInt() == 1 ? state = true : state = false;
+        dcMotor1.value.toInt() == 1 ? m1State = true : m1State = false;
       }
     }
   }
@@ -90,16 +102,59 @@ void streamCallback(MultiPathStream dcMotor1)
 
   Serial.printf("Received stream payload size: %d (Max. %d)\n\n", dcMotor1.payloadLength(), dcMotor1.maxPayloadLength());
 
-  dataChanged = true;
+  m1DataChanged = true;
 }
 
-void streamTimeoutCallback(bool timeout)
+void streamTimeoutCallbackForM1(bool timeout)
 {
   if (timeout)
     Serial.println("stream timed out, resuming...\n");
 
   if (!dcMotor1.httpConnected())
     Serial.printf("error code: %d, reason: %s\n\n", dcMotor1.httpCode(), dcMotor1.errorReason().c_str());
+}
+
+
+// CallBack function for 2nd dc motor
+void streamCallbackForM2(MultiPathStream dcMotor2)
+{
+  size_t numChild = sizeof(childPathForM2) / sizeof(childPathForM2[0]);
+
+  for (size_t i = 0; i < numChild; i++)
+  {
+    if (dcMotor2.get(childPathForM2[i]))
+    {
+      if (i == 0)
+      {
+        dcMotor2.value.toInt() == 1 ? m2Rotation = true : m2Rotation = false;
+      }
+
+      if (i == 1)
+      {
+        m2Speed = dcMotor2.value.toInt();
+      }
+
+      if (i == 2)
+      {
+        dcMotor2.value.toInt() == 1 ? m2State = true : m2State = false;
+      }
+    }
+  }
+
+  Serial.println();
+
+  Serial.printf("Received stream payload size: %d (Max. %d)\n\n", dcMotor2.payloadLength(), dcMotor2.maxPayloadLength());
+
+  m1DataChanged = true;
+}
+
+void streamTimeoutCallbackForM2(bool timeout)
+{
+  if (timeout)
+    Serial.println("stream timed out, resuming...\n");
+
+  if (!dcMotor2.httpConnected())
+    Serial.printf("error code: %d, reason: %s\n\n", dcMotor2.httpCode(), dcMotor2.errorReason().c_str());
 }
 
 
@@ -148,13 +203,18 @@ void setup() {
     {Serial.printf("stream begin error, %s\n\n", servoMotor.errorReason().c_str());}
   
 
-// For 1st DC Motor
-  if (!Firebase.RTDB.beginMultiPathStream(&dcMotor1, parentPath))
-    Serial.printf("sream begin error, %s\n\n", dcMotor1.errorReason().c_str());
+// For 1st DC Motor connection between firebase object and stream
+  if (!Firebase.RTDB.beginMultiPathStream(&dcMotor1, parentPathForM1))
+    Serial.printf("stream begin error, %s\n\n", dcMotor1.errorReason().c_str());
 
-  Firebase.RTDB.setMultiPathStreamCallback(&dcMotor1, streamCallback, streamTimeoutCallback);
+  Firebase.RTDB.setMultiPathStreamCallback(&dcMotor1, streamCallbackForM1, streamTimeoutCallbackForM1);
 
 
+// For 2nd DC Motor connection between firebase object and stream
+  if (!Firebase.RTDB.beginMultiPathStream(&dcMotor2, parentPathForM2))
+    Serial.printf("stream begin error, %s\n\n", dcMotor2.errorReason().c_str());
+
+  Firebase.RTDB.setMultiPathStreamCallback(&dcMotor2, streamCallbackForM2, streamTimeoutCallbackForM2);
 
 
   // For Servo motors
@@ -176,7 +236,13 @@ void setup() {
   pinMode(m1CwDirection, OUTPUT);
   pinMode(m1CcwDirection, OUTPUT);
 
-  pinMode(led, OUTPUT);
+  // For DC motor PWM 2
+  ledcSetup(channel2, frequency, resolution);
+  ledcAttachPin(motor2PWM, channel2);
+
+  pinMode(m2CwDirection, OUTPUT);
+  pinMode(m2CcwDirection, OUTPUT);
+
 }
 
 void loop() {
@@ -201,30 +267,57 @@ void loop() {
     }
   }
 
-  if (dataChanged)
+  if (m1DataChanged)
   {
-    dataChanged = false;
-    Serial.printf("Rotation: %d \nSpeed: %d \nState: %d \n\n", rotation, speed, state);
+    m1DataChanged = false;
+    Serial.printf("m1Rotation: %d \nm1Speed: %d \nm1State: %d \n\n", m1Rotation, m1Speed, m1State);
     
-    if (state)
+    if (m1State)
     {
-      if (rotation)
+      if (m1Rotation)
       {
-        ledcWrite(channel1, speed * 255 / 100);
+        ledcWrite(channel1, m1Speed * 255 / 100);
         digitalWrite(m1CcwDirection, LOW);
         digitalWrite(m1CwDirection, HIGH);
       }
-      else if (!rotation)
+      else if (!m1Rotation)
       {
-        ledcWrite(channel1, speed * 255 / 100);
+        ledcWrite(channel1, m1Speed * 255 / 100);
         digitalWrite(m1CwDirection, LOW);
         digitalWrite(m1CcwDirection, HIGH);
       }
     }
-    else if(!state)
+    else if(!m1State)
     {
       digitalWrite(m1CwDirection, LOW);
       digitalWrite(m1CcwDirection, LOW);
+    }
+  }
+
+  if (m2DataChanged)
+  {
+    m2DataChanged = false;
+    Serial.printf("m2Rotation: %d \nm2Speed: %d \nm2State: %d \n\n", m2Rotation, m2Speed, m2State);
+    
+    if (m2State)
+    {
+      if (m2Rotation)
+      {
+        ledcWrite(channel2, m2Speed * 255 / 100);
+        digitalWrite(m2CcwDirection, LOW);
+        digitalWrite(m2CwDirection, HIGH);
+      }
+      else if (!m2Rotation)
+      {
+        ledcWrite(channel2, m2Speed * 255 / 100);
+        digitalWrite(m2CwDirection, LOW);
+        digitalWrite(m2CcwDirection, HIGH);
+      }
+    }
+    else if(!m2State)
+    {
+      digitalWrite(m2CwDirection, LOW);
+      digitalWrite(m2CcwDirection, LOW);
     }
   }
 }

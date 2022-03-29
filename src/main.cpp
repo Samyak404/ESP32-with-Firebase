@@ -33,7 +33,7 @@ const int servoPinNumber2 = 12;
 FirebaseData servoMotor;
 
 // Define Firebase Data For 1st Dc motor
-FirebaseData dcMotor1;
+FirebaseData dcMotor;
 
 //Define pinout for 1st Dc motor. Pin Numbers For Arduino Framework
 #define motor1PWM 32
@@ -41,11 +41,16 @@ FirebaseData dcMotor1;
 #define m1CwDirection 27
 #define m1CcwDirection 14
 
+//Define pinout for 2nd Dc motor. Pin Numbers For Arduino Framework
+#define motor2PWM 33
+#define channel2 5
+#define m2CwDirection 2
+#define m2CcwDirection 15
+
+
 String parentPath = "/DC Motor";
 String childPath[7] = {"/Rotation1","/Rotation2", "/Speed1","/Speed2", "/State1", "/State2", "/State3"};
 
-// For On Board LED
-const int led = 2;
 
 FirebaseAuth auth;
 FirebaseConfig config;
@@ -61,33 +66,33 @@ volatile bool rotation1, rotation2, state1, state2, state3;
 int speed1, speed2;
 
 
-void streamCallback(MultiPathStream dcMotor1)
+void streamCallback(MultiPathStream dcMotor)
 {
   size_t numChild = sizeof(childPath) / sizeof(childPath[0]);
 
   for (size_t i = 0; i < numChild; i++)
   {
-    if (dcMotor1.get(childPath[i]))
+    if (dcMotor.get(childPath[i]))
     {
-      if (i == 0){dcMotor1.value.toInt() == 1 ? rotation1 = true : rotation1 = false;}
+      if (i == 0){dcMotor.value.toInt() == 1 ? rotation1 = true : rotation1 = false;}
 
-      if (i == 1){dcMotor1.value.toInt() == 1 ? rotation2 = true : rotation2 = false;}
+      if (i == 1){dcMotor.value.toInt() == 1 ? rotation2 = true : rotation2 = false;}
 
-      if (i == 2){speed1 = dcMotor1.value.toInt();}
+      if (i == 2){speed1 = dcMotor.value.toInt();}
 
-      if (i == 3){speed2 = dcMotor1.value.toInt();}
+      if (i == 3){speed2 = dcMotor.value.toInt();}
 
-      if (i == 4){dcMotor1.value.toInt() == 1 ? state1 = true : state1 = false;}
+      if (i == 4){dcMotor.value.toInt() == 1 ? state1 = true : state1 = false;}
 
-      if (i == 5){dcMotor1.value.toInt() == 1 ? state2 = true : state2 = false;}
+      if (i == 5){dcMotor.value.toInt() == 1 ? state2 = true : state2 = false;}
 
-      if (i == 6){dcMotor1.value.toInt() == 1 ? state3 = true : state3 = false;}
+      if (i == 6){dcMotor.value.toInt() == 1 ? state3 = true : state3 = false;}
     }
   }
 
   Serial.println();
 
-  Serial.printf("Received stream payload size: %d (Max. %d)\n\n", dcMotor1.payloadLength(), dcMotor1.maxPayloadLength());
+  Serial.printf("Received stream payload size: %d (Max. %d)\n\n", dcMotor.payloadLength(), dcMotor.maxPayloadLength());
 
   dataChanged = true;
 }
@@ -97,8 +102,8 @@ void streamTimeoutCallback(bool timeout)
   if (timeout)
     Serial.println("stream timed out, resuming...\n");
 
-  if (!dcMotor1.httpConnected())
-    Serial.printf("error code: %d, reason: %s\n\n", dcMotor1.httpCode(), dcMotor1.errorReason().c_str());
+  if (!dcMotor.httpConnected())
+    Serial.printf("error code: %d, reason: %s\n\n", dcMotor.httpCode(), dcMotor.errorReason().c_str());
 }
 
 
@@ -148,10 +153,10 @@ void setup() {
   
 
 // For 1st DC Motor
-  if (!Firebase.RTDB.beginMultiPathStream(&dcMotor1, parentPath))
-    Serial.printf("sream begin error, %s\n\n", dcMotor1.errorReason().c_str());
+  if (!Firebase.RTDB.beginMultiPathStream(&dcMotor, parentPath))
+    Serial.printf("sream begin error, %s\n\n", dcMotor.errorReason().c_str());
 
-  Firebase.RTDB.setMultiPathStreamCallback(&dcMotor1, streamCallback, streamTimeoutCallback);
+  Firebase.RTDB.setMultiPathStreamCallback(&dcMotor, streamCallback, streamTimeoutCallback);
 
 
 
@@ -175,7 +180,13 @@ void setup() {
   pinMode(m1CwDirection, OUTPUT);
   pinMode(m1CcwDirection, OUTPUT);
 
-  pinMode(led, OUTPUT);
+  // For DC motor PWM 2
+  ledcSetup(channel2, frequency, resolution);
+  ledcAttachPin(motor2PWM, channel2);
+
+  pinMode(m2CwDirection, OUTPUT);
+  pinMode(m2CcwDirection, OUTPUT);
+
 }
 
 void loop() {
@@ -203,8 +214,9 @@ void loop() {
   if (dataChanged)
   {
     dataChanged = false;
-    Serial.printf("Rotation: %d \nSpeed: %d \nState: %d \n\n", rotation1, speed1, state1);
+    Serial.printf("Rotation: %d \nSpeed: %d \nState: %d \n\n", rotation2, speed2, state2);
     
+// 1st dc motor
     if (state1)
     {
       if (rotation1)
@@ -224,6 +236,28 @@ void loop() {
     {
       digitalWrite(m1CwDirection, LOW);
       digitalWrite(m1CcwDirection, LOW);
+    }
+
+// 2nd dc motor
+    if (state2)
+    {
+      if (rotation2)
+      {
+        ledcWrite(channel2, speed2 * 255 / 100);
+        digitalWrite(m2CcwDirection, LOW);
+        digitalWrite(m2CwDirection, HIGH);
+      }
+      else if (!rotation2)
+      {
+        ledcWrite(channel2, speed2 * 255 / 100);
+        digitalWrite(m2CwDirection, LOW);
+        digitalWrite(m2CcwDirection, HIGH);
+      }
+    }
+    else if(!state2)
+    {
+      digitalWrite(m2CwDirection, LOW);
+      digitalWrite(m2CcwDirection, LOW);
     }
   }
 }

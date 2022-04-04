@@ -47,6 +47,9 @@ FirebaseData dcMotor;
 #define m2CwDirection 2
 #define m2CcwDirection 15
 
+//Define pinout for 2nd Dc motor. Pin Numbers For Arduino Framework
+#define dcMotor3 4
+
 
 String parentPath = "/DC Motor";
 String childPath[7] = {"/Rotation1","/Rotation2", "/Speed1","/Speed2", "/State1", "/State2", "/State3"};
@@ -187,6 +190,8 @@ void setup() {
   pinMode(m2CwDirection, OUTPUT);
   pinMode(m2CcwDirection, OUTPUT);
 
+  // For DC motor 3
+  pinMode(dcMotor3, OUTPUT);
 }
 
 void loop() {
@@ -258,6 +263,16 @@ void loop() {
     {
       digitalWrite(m2CwDirection, LOW);
       digitalWrite(m2CcwDirection, LOW);
+    }
+
+// 3rd dc motor
+    if (state3)
+    {
+      digitalWrite(dcMotor3, HIGH);
+    }
+    else if (!state3)
+    {
+      digitalWrite(dcMotor3, LOW);
     }
   }
 }
